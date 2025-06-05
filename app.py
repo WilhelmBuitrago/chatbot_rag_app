@@ -14,7 +14,7 @@ class ChatApp:
         st.set_page_config(page_title="Interactive Chatbot", layout="centered")
         st.title("Interactive Chatbot")
         with st.expander("Model configuration"):
-            host = st.selectbox(label="Host", options=["Ollama", "Hugginface"], index=0)
+            host = st.selectbox(label="Host", options=["Ollama", "Hugginface"], index=1)
             if host == "Ollama":
                 model_name = st.selectbox(
                     "Model:", options=[model.model for model in ollama.list()["models"]]
