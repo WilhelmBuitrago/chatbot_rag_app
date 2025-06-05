@@ -11,8 +11,8 @@ import asyncio
 
 class ChatApp:
     def __init__(self):
-        st.set_page_config(page_title="Chatbot Interactivo", layout="centered")
-        st.title("Chatbot Interactivo")
+        st.set_page_config(page_title="Interactive Chatbot", layout="centered")
+        st.title("Interactive Chatbot")
         if "bot" not in st.session_state:
             st.session_state.bot = None
         if "rag" not in st.session_state:
@@ -44,7 +44,6 @@ class ChatApp:
 
     def cargar_rag(self, preprocessing=None, **kwargs):
         if preprocessing == "PyMuPDFPreprocessing":
-            kwargs = {"extract_images": False}
             preprocessing = PyMuPDFPreprocessing
             st.session_state.rag = RAG(
                 path="./data/", preprocessing=preprocessing, **kwargs
@@ -59,28 +58,49 @@ class ChatApp:
     def opciones_sidebar(self):
         with st.sidebar:
             st.header("Opciones")
-            nombre_modelo = st.selectbox(
-                "Modelo:", options=[model.model for model in ollama.list()["models"]]
+            model_name = st.selectbox(
+                "Model:", options=[model.model for model in ollama.list()["models"]]
             )
 
-            if not hasattr(self, "name") or nombre_modelo != self.name:
-                self.name = nombre_modelo
+            if not hasattr(self, "name") or model_name != self.name:
+                self.name = model_name
                 self.cargar_bot(self.name)
             self.accion_rag = st.selectbox(
-                "Acciones sobre RAG:",
+                "RAG Actions:",
                 options=["BasePreprocessing", "PyMuPDFPreprocessing"],
                 index=0,
             )
+            if self.accion_rag == "PyMuPDFPreprocessing":
+                with st.expander("PyMuPDF Configuration"):
+                    st.write(
+                        "You can configure image extraction and other parameters. (Only text by default)"
+                    )
+                    self.extract_images = st.checkbox("Extract images", value=False)
+                    if self.extract_images:
+                        st.warning("You must have Tesseract installed and configured.")
+                        self.tesseract_path = st.text_input(label="Tesseract Path")
+                    self.extract_tables = st.checkbox("Extract tables", value=False)
+
             self.archivo_subido = st.file_uploader(
-                "Sube un documento (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"]
+                "Upload a document (PDF)", type=["pdf"]
             )
-            if st.button("Procesar documento"):
+            if st.button("Process document"):
                 if self.archivo_subido:
                     os.makedirs("./data", exist_ok=True)
                     if not os.path.exists(f"./data/{self.archivo_subido.name}"):
                         with open(f"./data/{self.archivo_subido.name}", "wb") as f:
                             f.write(self.archivo_subido.getbuffer())
-                    self.cargar_rag(preprocessing=self.accion_rag)
+                    if self.accion_rag == "PyMuPDFPreprocessing":
+                        kwargs = {
+                            "extract_images": self.extract_images,
+                            "extract_tables": self.extract_tables,
+                        }
+                        if self.extract_images:
+                            kwargs["tesseract_path"] = self.tesseract_path
+
+                        self.cargar_rag(preprocessing=self.accion_rag, **kwargs)
+                    else:
+                        self.cargar_rag(preprocessing=self.accion_rag)
                 else:
                     if os.path.exists("./data/"):
                         shutil.rmtree("./data/")
@@ -162,7 +182,7 @@ class ChatApp:
         )
 
     def manejar_entrada(self):
-        user_input = st.chat_input("Escribe tu mensaje...")
+        user_input = st.chat_input("Write your message...")
         if user_input:
             st.session_state.messages.append({"role": "user", "content": user_input})
             self.mostrar_mensaje_usuario(user_input)
@@ -184,9 +204,17 @@ class ChatApp:
                         )
                     )
                     if respuesta is None:
-                        respuesta = "Lo siento, la respuesta está tomando demasiado tiempo. ¿Hay otra cosa en la que pueda ayudarte?"
+                        respuesta = self.llamar_bot_con_timeout(
+                            st.session_state.bot,
+                            """Say "I'm sorry, I haven't been able to generate an answer yet. Is there anything else I can assist you with?" In the same language as the user's question""",
+                            user_input,
+                        )
                 else:
-                    respuesta = "Lo siento, aún no he podido generar una respuesta. ¿Hay algo más en lo que pueda asistirte?"
+                    respuesta = self.llamar_bot_con_timeout(
+                        st.session_state.bot,
+                        """Say "I'm sorry, I haven't been able to generate an answer yet. Is there anything else I can assist you with?" In the same language as the user's question""",
+                        user_input,
+                    )
             else:
                 self.reintento_hecho = False  # reinicia si fue exitoso
             st.session_state.messages.append(
