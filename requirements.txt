@@ -1,2 +1,2 @@
-streamlit
+streamlit==1.45.1
 chatbot-rag==0.1.8
