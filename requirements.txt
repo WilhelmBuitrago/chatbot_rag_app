@@ -1,2 +1,2 @@
 streamlit
-chatbot-rag==0.1.7
+chatbot-rag==0.1.8
