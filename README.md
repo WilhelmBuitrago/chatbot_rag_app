@@ -1,5 +1,5 @@
 # chatbot_rag_app
-
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)]([https://dashboard-unal-sede-delapaz.streamlit.app/](https://chatbotragapp.streamlit.app/))
 ## 🚀 Resume
 
 This project is an interactive chatbot application that leverages Retrieval-Augmented Generation (RAG) techniques for enhanced conversational capabilities. It allows users to upload documents, process them, and interact with a chatbot that provides context-aware responses.
