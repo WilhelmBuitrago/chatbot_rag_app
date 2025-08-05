@@ -13,28 +13,6 @@ class ChatApp:
     def __init__(self):
         st.set_page_config(page_title="Interactive Chatbot", layout="centered")
         st.title("Interactive Chatbot")
-        with st.expander("Model configuration"):
-            host = st.selectbox(label="Host", options=["Ollama", "Hugginface"], index=1)
-            if host == "Ollama":
-                model_name = st.selectbox(
-                    "Model:", options=[model.model for model in ollama.list()["models"]]
-                )
-
-                if not hasattr(self, "name") or model_name != self.name:
-                    self.name = model_name
-                    self.load_bot(host, model_name=self.name)
-            elif host == "Hugginface":
-                model_name = st.text_input(
-                    label="Model Name", value="deepseek-ai/DeepSeek-V3-0324"
-                )
-                token = st.text_input(label="Token", value="")
-                provider = st.text_input(label="Provider", value="hyperbolic")
-                st.button(
-                    "Load Model",
-                    on_click=self.load_bot,
-                    args=(host, model_name, token, provider),
-                )
-
         if "bot" not in st.session_state:
             st.session_state.bot = None
         if "rag" not in st.session_state:
@@ -74,38 +52,17 @@ class ChatApp:
             st.session_state.rag = RAG(path="./data/")
         st.session_state.rag()
 
-    def load_bot(self, host, model_name, token=None, provider=None):
-        if host == "Ollama":
-            st.session_state.bot = OllamaChatbot(name=model_name)
-        elif host == "Hugginface":
-            st.session_state.bot = HuggingFaceChatbot(
-                model_name=model_name, token=token, provider=provider
-            )
-
     def sidebar_options(self):
         with st.sidebar:
-            st.header("Options")
-
-            self.rag_action = st.selectbox(
-                "RAG Actions:",
-                options=["BasePreprocessing", "PyMuPDFPreprocessing"],
-                index=0,
-            )
-            if self.rag_action == "PyMuPDFPreprocessing":
-                with st.expander("PyMuPDF Configuration"):
-                    st.write(
-                        "You can configure image extraction and other parameters. (Only text by default)"
-                    )
-                    self.extract_images = st.checkbox("Extract images", value=False)
-                    if self.extract_images:
-                        st.warning("You must have Tesseract installed and configured.")
-                        self.tesseract_path = st.text_input(label="Tesseract Path")
-                    self.extract_tables = st.checkbox("Extract tables", value=False)
-
             self.uploaded_file = st.file_uploader(
                 "Upload a document (PDF)", type=["pdf"]
             )
-            if st.button("Process document"):
+            if st.button("Process document", type="primary"):
+                self.extract_images = st.session_state.rag_config["extract_images"]
+                self.extract_tables = st.session_state.rag_config["extract_tables"]
+                self.tesseract_path = st.session_state.rag_config["tesseract_path"]
+                self.rag_action = st.session_state.rag_config["rag_action"]
+
                 if self.uploaded_file:
                     os.makedirs("./data", exist_ok=True)
                     if not os.path.exists(f"./data/{self.uploaded_file.name}"):
@@ -129,6 +86,8 @@ class ChatApp:
                         shutil.rmtree("./info/")
 
                     st.session_state.rag = None
+
+            st.page_link(page="pages/configuration.py", label="Configuration", icon="⚙️")
 
     def init_session(self):
         if "messages" not in st.session_state:
